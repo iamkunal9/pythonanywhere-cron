@@ -18,3 +18,7 @@ package = false
 dev = [
     "pytest>=8,<9",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
