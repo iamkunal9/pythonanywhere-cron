@@ -1,0 +1,32 @@
+name: extend-pythonanywhere
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # every Monday 06:00 UTC
+  workflow_dispatch: {}     # allow manual runs from the Actions tab
+
+jobs:
+  extend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Extend web apps
+        run: uv run python main.py
+        env:
+          PA_ACCOUNTS: ${{ secrets.PA_ACCOUNTS }}
+
+      - name: Upload debug log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pa-extend-log
+          path: pa_extend.log
+          if-no-files-found: ignore
