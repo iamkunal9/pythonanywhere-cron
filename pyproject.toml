@@ -1,0 +1,20 @@
+[project]
+name = "pythonanywhere-extend-api"
+version = "0.1.0"
+description = "Auto-extend PythonAnywhere free-tier web apps."
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.34,<3",
+    "beautifulsoup4>=4.14,<5",
+    "python-dotenv>=1.2,<2",
+    "loguru>=0.7,<0.8",
+    "tenacity>=9.1,<10",
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<9",
+]
