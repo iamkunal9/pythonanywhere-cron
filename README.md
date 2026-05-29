@@ -64,6 +64,11 @@ bound to each `user=<username>`; the process exits `1` if any account failed.
 Console output is colored INFO+ logs. A full DEBUG log is written to `pa_extend.log`
 (rotated at 1MB, 5 files kept).
 
+**Usernames are masked** in all log output (`pietlibrary` → `pi***ry`), including the
+dashboard URLs and the default domain. Passwords are never logged. This keeps account
+identities out of public GitHub Actions logs and the failure-log artifact. Masking is a
+loguru patcher applied to every sink, so it covers the console and the file log alike.
+
 Override log level:
 
 ```powershell

@@ -57,8 +57,57 @@ class PythonAnywhereExtendError(PythonAnywhereError):
     """Permanent — extend endpoint refused the action. Do not retry."""
 
 
+# --- log redaction -----------------------------------------------------------
+# Usernames (and the default <username>.pythonanywhere.com domain / dashboard
+# URLs that embed them) would otherwise appear in plaintext logs. On a public
+# repo, GitHub Actions logs and the uploaded failure artifact are world-readable,
+# so we mask registered secrets everywhere they appear in log output.
+
+_SECRETS: set[str] = set()
+
+
+def register_secret(value: str) -> None:
+    """Register a value to be masked in all subsequent log output."""
+    if value and value.strip():
+        _SECRETS.add(value)
+
+
+def _mask(value: str) -> str:
+    """Reveal first 2 + last 2 chars, fixed-length masked middle.
+
+    Short values (<= 4 chars) reveal only the first char so they aren't
+    effectively exposed. The middle is always '***' so the original length
+    is not leaked.
+    """
+    if len(value) <= 4:
+        return f"{value[0]}***" if value else "***"
+    return f"{value[:2]}***{value[-2:]}"
+
+
+def redact(text: str) -> str:
+    """Replace every registered secret in ``text`` with its masked form.
+
+    Longest secrets first so a secret that is a substring of another
+    (e.g. 'alice' within 'alicepro') doesn't get half-masked.
+    """
+    for secret in sorted(_SECRETS, key=len, reverse=True):
+        if secret in text:
+            text = text.replace(secret, _mask(secret))
+    return text
+
+
+def _redact_patcher(record) -> None:
+    """Loguru patcher: redact the message and any string values in ``extra``."""
+    record["message"] = redact(record["message"])
+    extra = record["extra"]
+    for key, value in list(extra.items()):
+        if isinstance(value, str):
+            extra[key] = redact(value)
+
+
 def configure_logging() -> None:
     logger.remove()
+    logger.configure(patcher=_redact_patcher)
     logger.add(
         sys.stderr,
         level=os.environ.get("PA_LOG_LEVEL", "INFO"),
@@ -284,6 +333,10 @@ def main() -> int:
     except PythonAnywhereConfigError as exc:
         logger.error(f"configuration error: {exc}")
         return 2
+
+    for account in accounts:
+        register_secret(account["username"])
+        register_secret(account["password"])
 
     failures: list[str] = []
     for account in accounts:
